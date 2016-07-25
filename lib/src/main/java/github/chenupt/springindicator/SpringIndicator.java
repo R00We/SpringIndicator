@@ -20,6 +20,8 @@ import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -27,6 +29,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -60,7 +63,7 @@ public class SpringIndicator extends FrameLayout {
     private SpringView springView;
     private ViewPager viewPager;
 
-    private List<TextView> tabs;
+    private List<View> tabs;
 
     private ViewPager.OnPageChangeListener delegateListener;
     private TabClickListener tabClickListener;
@@ -103,15 +106,25 @@ public class SpringIndicator extends FrameLayout {
 
     public void setViewPager(final ViewPager viewPager) {
         this.viewPager = viewPager;
-        initSpringView();
+        initSpringView(null);
+        setUpListener();
+    }
+
+    public void setViewPager(final ViewPager viewPager, @NonNull ImageView[] images) {
+        this.viewPager = viewPager;
+        initSpringView(images);
         setUpListener();
     }
 
 
-    private void initSpringView() {
+    private void initSpringView(@Nullable ImageView[] images) {
         addPointView();
         addTabContainerView();
-        addTabItems();
+        if (images == null) {
+            addTextTabItems();
+        } else {
+            addImageTabItems(images);
+        }
     }
 
     private void addPointView() {
@@ -128,7 +141,7 @@ public class SpringIndicator extends FrameLayout {
         addView(tabContainer);
     }
 
-    private void addTabItems() {
+    private void addTextTabItems() {
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
         tabs = new ArrayList<>();
         for (int i = 0; i < viewPager.getAdapter().getCount(); i++) {
@@ -157,6 +170,30 @@ public class SpringIndicator extends FrameLayout {
         }
     }
 
+    private void addImageTabItems(@NonNull ImageView[] images) {
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f);
+
+        tabs = new ArrayList<>();
+        for (int i = 0; i < viewPager.getAdapter().getCount(); i++) {
+            ImageView image = images[i];
+            image.setScaleType(ImageView.ScaleType.CENTER);
+            if (textBgResId != 0){
+                image.setBackgroundResource(textBgResId);
+            }
+            image.setLayoutParams(layoutParams);
+            final int position = i;
+            image.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if(tabClickListener == null || tabClickListener.onTabClick(position)){
+                        viewPager.setCurrentItem(position);
+                    }
+                }
+            });
+            tabs.add(image);
+            tabContainer.addView(image);
+        }
+    }
     /**
      * Set current point position.
      */
@@ -175,7 +212,6 @@ public class SpringIndicator extends FrameLayout {
         super.onLayout(changed, l, t, r, b);
         if (changed) {
             createPoints();
-            setSelectedTextColor(viewPager.getCurrentItem());
         }
     }
 
@@ -186,7 +222,6 @@ public class SpringIndicator extends FrameLayout {
             @Override
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
-                setSelectedTextColor(position);
                 if(delegateListener != null){
                     delegateListener.onPageSelected(position);
                 }
@@ -270,13 +305,6 @@ public class SpringIndicator extends FrameLayout {
         return tabs.get(position).getX() + tabs.get(position).getWidth() / 2;
     }
 
-    private void setSelectedTextColor(int position){
-        for (TextView tab : tabs) {
-            tab.setTextColor(getResources().getColor(textColorId));
-        }
-        tabs.get(position).setTextColor(getResources().getColor(selectedTextColorId));
-    }
-
     private void createIndicatorColorAnim(){
         indicatorColorAnim = ObjectAnimator.ofInt(springView, "indicatorColor", indicatorColorArray);
         indicatorColorAnim.setEvaluator(new ArgbEvaluator());
@@ -290,7 +318,7 @@ public class SpringIndicator extends FrameLayout {
         indicatorColorAnim.setCurrentPlayTime(seekTime);
     }
 
-    public List<TextView> getTabs(){
+    public List<View> getTabs(){
         return tabs;
     }
 
